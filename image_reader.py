@@ -1,10 +1,11 @@
 import os
 from flask import Flask, request, redirect, url_for
 from werkzeug import secure_filename
-import Image
+#import Image
+from PIL import Image
 import pytesseract
 
-UPLOAD_FOLDER = './uploads'
+UPLOAD_FOLDER = '/var/www/html/image_reader/uploads'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
 app = Flask(__name__)
@@ -23,6 +24,7 @@ def upload_file():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + file.filename))  
             return text
+            #return file.filename
     return '''
     <!doctype html>
     <title>Upload new File</title>
@@ -34,4 +36,4 @@ def upload_file():
     '''
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', debug = False)
