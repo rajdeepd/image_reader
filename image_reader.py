@@ -1,11 +1,15 @@
 import os
 from flask import Flask, request, redirect, url_for
 from werkzeug import secure_filename
-#import Image
-from PIL import Image
+import datetime
+import time
+try:
+    import Image
+except:
+    from PIL import Image
 import pytesseract
 
-UPLOAD_FOLDER = '/var/www/html/image_reader/uploads'
+UPLOAD_FOLDER = '/home/ubuntu/temp/python/image_reader/uploads'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
 app = Flask(__name__)
@@ -20,10 +24,44 @@ def upload_file():
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + file.filename))  
-            return text
+            try:
+                filename = secure_filename(file.filename)
+                ts = time.time()
+                filename = filename +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S')
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + filename))
+                badge_count = 0
+                if text.startswith("tra"):
+                    b = text.index("Badges")
+                    print b
+                    b1 = text[b - 2: b -1]
+                    b2 = text[b - 4: b - 3]
+
+                    if b2.isdigit() & b1.isdigit():
+                        badge_count = b2 + b1
+                    elif b1.lstrip(" ").rstrip(" ").isdigit():
+                        badge_count = b1
+                    else:
+                        return "error processing:" + text
+                else:
+                    if text[0:1].isdigit():
+                        b1 = text.index("t")
+                        try:
+                            b2 = text.index(" ")
+                        except Exception as e:
+                            b2 = text.index(".")
+
+                        badge_count = text[b2 :b1]
+                        if badge_count.startswith("."):
+                            badge_count = badge_count[1:]
+                        if badge_count.startswith(" ."):
+                            badge_count = badge_count[2:]
+                    else:
+                        return "error processing:" + text
+                print badge_count
+                return "badge_count:" + badge_count
+            except Exception as e:
+                print e
             #return file.filename
     return '''
     <!doctype html>
