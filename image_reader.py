@@ -30,36 +30,74 @@ def upload_file():
                 filename = filename +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S')
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + filename))
+                print text
+                textArray = text.split("\n")
                 badge_count = 0
-                if text.startswith("tra"):
-                    b = text.index("Badges")
-                    print b
-                    b1 = text[b - 2: b -1]
-                    b2 = text[b - 4: b - 3]
+                i = 0
+                for line in textArray:
+                    line = line.lstrip(' ').rstrip(' ')
+                    print line
+                    if line != '':
+                        l_length = line.__sizeof__()
 
-                    if b2.isdigit() & b1.isdigit():
-                        badge_count = b2 + b1
-                    elif b1.lstrip(" ").rstrip(" ").isdigit():
-                        badge_count = b1
-                    else:
-                        return "error processing:" + text
-                else:
-                    if text[0:1].isdigit():
-                        b1 = text.index("t")
-                        try:
-                            b2 = text.index(" ")
-                        except Exception as e:
-                            b2 = text.index(".")
+                        if line[0:1].isdigit():
+                            lineA = line.split(' ')
+                            lineA_len = lineA.__len__()
+                            last_char = lineA[lineA_len -1]
+                            if last_char.isdigit():
+                                if not textArray[i+1].lower().startswith("in progress"):
+                                    badge_count = lineA[lineA_len -2]
+                                    print "badge_count>>" + badge_count
+                                    return badge_count
+                                elif textArray[i+1].lower().startswith("tra"):
+                                    badge_count = lineA[lineA_len -2]
+                                    print "badge_count>>" + badge_count
+                                    return badge_count
 
-                        badge_count = text[b2 :b1]
-                        if badge_count.startswith("."):
-                            badge_count = badge_count[1:]
-                        if badge_count.startswith(" ."):
-                            badge_count = badge_count[2:]
-                    else:
-                        return "error processing:" + text
-                print badge_count
-                return "badge_count:" + badge_count
+                            elif last_char == '-':
+                                badge_count = lineA[lineA_len - 3]
+                                return badge_count
+                            elif line.endswith('Trailhead Points'):
+                                lineA = line.split(' ')
+                                lineA_len = lineA.__len__()
+                                return lineA[1][1:]
+
+                        elif line.startswith('Home Trails Modules Projects') & line.endswith('Points'):
+                            lineA = line.split(' ')
+                            return lineA[7]
+                    i += 1
+                return "Error: " + text
+                        #print line
+
+                # if text.startswith("tra"):
+                #     b = text.index("Badges")
+                #     print b
+                #     b1 = text[b - 2: b -1]
+                #     b2 = text[b - 4: b - 3]
+                #
+                #     if b2.isdigit() & b1.isdigit():
+                #         badge_count = b2 + b1
+                #     elif b1.lstrip(" ").rstrip(" ").isdigit():
+                #         badge_count = b1
+                #     else:
+                #         return "error processing:" + text
+                # else:
+                #     if text[0:1].isdigit():
+                #         b1 = text.index("t")
+                #         try:
+                #             b2 = text.index(" ")
+                #         except Exception as e:
+                #             b2 = text.index(".")
+                #
+                #         badge_count = text[b2 :b1]
+                #         if badge_count.startswith("."):
+                #             badge_count = badge_count[1:]
+                #         if badge_count.startswith(" ."):
+                #             badge_count = badge_count[2:]
+                #     else:
+                #         return "error processing:" + text
+                # print badge_count
+                # return "badge_count:" + badge_count
             except Exception as e:
                 print e
             #return file.filename
