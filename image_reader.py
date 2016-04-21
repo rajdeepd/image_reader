@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, redirect, url_for
 from werkzeug import secure_filename
+from flask import render_template
 import datetime
 import time
 try:
@@ -8,6 +9,7 @@ try:
 except:
     from PIL import Image
 import pytesseract
+import urllib
 
 HOME = '/home/ubuntu/temp/python/image_reader'
 UPLOAD_FOLDER = HOME + '/uploads'
@@ -23,11 +25,29 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+@app.route('/uploadform', methods=['GET'])
+def my_form():
+    return render_template("form.html")
+
+@app.route('/upload', methods=['POST'])
+def upload_url_form_post():
+    print os.path.abspath(__file__)
+    try:
+        text = request.form['text']
+        processed_text = text
+        print processed_text
+        ts = time.time()
+        filename = HOME + "/input/trailhead-" +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S') + ".png"
+        urllib.urlretrieve(processed_text,filename)
+        t = processImage(filename)
+        os.remove(filename)
+    except Exception as e:
+        logging.error(e)
+        return str(e)
+    return t
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-    logging.debug('This message should go to the log file')
-    logging.info('So should this')
-    logging.warning('And this, too')
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
@@ -36,54 +56,10 @@ def upload_file():
                 ts = time.time()
                 filename = filename +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S')
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + filename))
-                logging.debug(text)
-                textArray = text.split("\n")
-                badge_count = 0
-                i = 0
-                for line in textArray:
-                    line = line.lstrip(' ').rstrip(' ')
-                    print line
-                    if line != '':
-                        l_length = line.__sizeof__()
-
-                        if line[0:1].isdigit():
-                            lineA = line.split(' ')
-                            lineA_len = lineA.__len__()
-                            last_char = lineA[lineA_len -1]
-                            if last_char.isdigit():
-                                if not textArray[i+1].lower().startswith("in progress"):
-                                    badge_count = lineA[lineA_len -2]
-                                    logging.debug("badge_count:" + badge_count)
-                                    return badge_count
-                                elif textArray[i+1].lower().startswith("tra"):
-                                    badge_count = lineA[lineA_len -2]
-                                    logging.debug("badge_count: " + badge_count)
-                                    return badge_count
-
-                            elif last_char == '-':
-                                badge_count = lineA[lineA_len - 3]
-                                return badge_count
-                            elif line.endswith('Trailhead Points'):
-                                lineA = line.split(' ')
-                                lineA_len = lineA.__len__()
-                                badge_count = lineA[1][1:]
-                                logging.debug("badge_count: " + badge_count)
-                                return badge_count
-
-                        elif line.startswith('Home Trails Modules Projects') & line.endswith('Points'):
-                            lineA = line.split(' ')
-                            temp = lineA[7]
-                            if (temp == '-') & (lineA[9] == 'Badges'):
-                                temp = lineA[8]
-                            if temp.startswith("s"):
-                                temp = "5" + temp[1:]
-                            logging.debug("badge_count: " + temp)
-                            return temp
-                    i += 1
-                logging.debug("came here returning error")
-                return "Error: " + text
-
+                filePath = UPLOAD_FOLDER + '/' + filename
+                t = processImage(filePath)
+                os.remove(filePath)
+                return t
 
             except Exception as e:
                 logging.error(e)
@@ -97,6 +73,56 @@ def upload_file():
          <input type=submit value=Upload>
     </form>
     '''
+def processImage(filepath):
+    text = pytesseract.image_to_string(Image.open(filepath))
+    logging.debug(text)
+    textArray = text.split("\n")
+    badge_count = 0
+    i = 0
+    for line in textArray:
+        line = line.lstrip(' ').rstrip(' ')
+        print line
+        if line != '':
+            l_length = line.__sizeof__()
+
+            if line[0:1].isdigit():
+                lineA = line.split(' ')
+                lineA_len = lineA.__len__()
+                last_char = lineA[lineA_len -1]
+                if last_char.isdigit():
+                    if not textArray[i+1].lower().startswith("in progress"):
+                        badge_count = lineA[lineA_len -2]
+                        logging.debug("badge_count:" + badge_count)
+                        return badge_count
+                    elif textArray[i+1].lower().startswith("tra"):
+                        badge_count = lineA[lineA_len -2]
+                        logging.debug("badge_count: " + badge_count)
+                        return badge_count
+
+                elif last_char == '-':
+                    badge_count = lineA[lineA_len - 3]
+                    return badge_count
+                elif line.endswith('Trailhead Points'):
+                    lineA = line.split(' ')
+                    lineA_len = lineA.__len__()
+                    badge_count = lineA[1][1:]
+                    logging.debug("badge_count: " + badge_count)
+                    return badge_count
+
+            elif line.startswith('Home Trails Modules Projects') & line.endswith('Points'):
+                lineA = line.split(' ')
+                temp = lineA[7]
+                if (temp == '-') & (lineA[9] == 'Badges'):
+                    temp = lineA[8]
+                if temp.startswith("s"):
+                    temp = "5" + temp[1:]
+                logging.debug("badge_count: " + temp)
+                return temp
+        i += 1
+    logging.debug("came here returning error")
+    return "Error: " + text
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug = False)
