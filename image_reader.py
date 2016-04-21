@@ -9,11 +9,15 @@ except:
     from PIL import Image
 import pytesseract
 
-UPLOAD_FOLDER = '/home/ubuntu/temp/python/image_reader/uploads'
+HOME = '/home/ubuntu/temp/python/image_reader'
+UPLOAD_FOLDER = HOME + '/uploads'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+import logging
+logging.basicConfig(filename=HOME + '/logging.log',level=logging.DEBUG)
+
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -21,6 +25,9 @@ def allowed_file(filename):
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
+    logging.debug('This message should go to the log file')
+    logging.info('So should this')
+    logging.warning('And this, too')
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
@@ -30,7 +37,7 @@ def upload_file():
                 filename = filename +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S')
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 text = pytesseract.image_to_string(Image.open(UPLOAD_FOLDER + '/' + filename))
-                print text
+                logging.debug(text)
                 textArray = text.split("\n")
                 badge_count = 0
                 i = 0
@@ -47,11 +54,11 @@ def upload_file():
                             if last_char.isdigit():
                                 if not textArray[i+1].lower().startswith("in progress"):
                                     badge_count = lineA[lineA_len -2]
-                                    print "badge_count>>" + badge_count
+                                    logging.debug("badge_count:" + badge_count)
                                     return badge_count
                                 elif textArray[i+1].lower().startswith("tra"):
                                     badge_count = lineA[lineA_len -2]
-                                    print "badge_count>>" + badge_count
+                                    logging.debug("badge_count: " + badge_count)
                                     return badge_count
 
                             elif last_char == '-':
@@ -60,47 +67,27 @@ def upload_file():
                             elif line.endswith('Trailhead Points'):
                                 lineA = line.split(' ')
                                 lineA_len = lineA.__len__()
-                                return lineA[1][1:]
+                                badge_count = lineA[1][1:]
+                                logging.debug("badge_count: " + badge_count)
+                                return badge_count
 
                         elif line.startswith('Home Trails Modules Projects') & line.endswith('Points'):
                             lineA = line.split(' ')
-                            return lineA[7]
+                            temp = lineA[7]
+                            if (temp == '-') & (lineA[9] == 'Badges'):
+                                temp = lineA[8]
+                            if temp.startswith("s"):
+                                temp = "5" + temp[1:]
+                            logging.debug("badge_count: " + temp)
+                            return temp
                     i += 1
+                logging.debug("came here returning error")
                 return "Error: " + text
-                        #print line
 
-                # if text.startswith("tra"):
-                #     b = text.index("Badges")
-                #     print b
-                #     b1 = text[b - 2: b -1]
-                #     b2 = text[b - 4: b - 3]
-                #
-                #     if b2.isdigit() & b1.isdigit():
-                #         badge_count = b2 + b1
-                #     elif b1.lstrip(" ").rstrip(" ").isdigit():
-                #         badge_count = b1
-                #     else:
-                #         return "error processing:" + text
-                # else:
-                #     if text[0:1].isdigit():
-                #         b1 = text.index("t")
-                #         try:
-                #             b2 = text.index(" ")
-                #         except Exception as e:
-                #             b2 = text.index(".")
-                #
-                #         badge_count = text[b2 :b1]
-                #         if badge_count.startswith("."):
-                #             badge_count = badge_count[1:]
-                #         if badge_count.startswith(" ."):
-                #             badge_count = badge_count[2:]
-                #     else:
-                #         return "error processing:" + text
-                # print badge_count
-                # return "badge_count:" + badge_count
+
             except Exception as e:
-                print e
-            #return file.filename
+                logging.error(e)
+                return "Error:" + e
     return '''
     <!doctype html>
     <title>Upload new File</title>
