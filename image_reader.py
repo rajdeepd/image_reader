@@ -13,7 +13,7 @@ import urllib
 
 HOME = '/home/ubuntu/temp/python/image_reader'
 UPLOAD_FOLDER = HOME + '/uploads'
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'JPG','PNG','jpeg', 'gif'])
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -38,6 +38,7 @@ def upload_url_form_post():
         print processed_text
         ts = time.time()
         filename = HOME + "/input/trailhead-" +  datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H:%M:%S') + ".png"
+
         urllib.urlretrieve(processed_text,filename)
         t = processImage(filename)
         os.remove(filename)
@@ -84,8 +85,16 @@ def processImage(filepath):
         print line
         if line != '':
             l_length = line.__sizeof__()
-
-            if line[0:1].isdigit():
+            if line.startswith('Home Trails Modules Projects') & line.endswith('Points') or line.startswith('Home') :
+                lineA = line.split(' ')
+                temp = lineA[7]
+                if (temp == '-') & (lineA[9] == 'Badges'):
+                    temp = lineA[8]
+                if temp.startswith("s"):
+                    temp = "5" + temp[1:]
+                logging.debug("badge_count: " + temp)
+                return temp
+            elif line[0:1].isdigit():
                 lineA = line.split(' ')
                 lineA_len = lineA.__len__()
                 last_char = lineA[lineA_len -1]
@@ -97,7 +106,7 @@ def processImage(filepath):
                     elif textArray[i+1].lower().startswith("tra"):
                         badge_count = lineA[lineA_len -2]
                         logging.debug("badge_count: " + badge_count)
-                        return badge_count
+                        badge_count
 
                 elif last_char == '-':
                     badge_count = lineA[lineA_len - 3]
@@ -109,15 +118,7 @@ def processImage(filepath):
                     logging.debug("badge_count: " + badge_count)
                     return badge_count
 
-            elif line.startswith('Home Trails Modules Projects') & line.endswith('Points'):
-                lineA = line.split(' ')
-                temp = lineA[7]
-                if (temp == '-') & (lineA[9] == 'Badges'):
-                    temp = lineA[8]
-                if temp.startswith("s"):
-                    temp = "5" + temp[1:]
-                logging.debug("badge_count: " + temp)
-                return temp
+
         i += 1
     logging.debug("came here returning error")
     return "Error: " + text
