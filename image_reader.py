@@ -41,7 +41,11 @@ def upload_url_form_post():
 
         urllib.urlretrieve(processed_text,filename)
         t = processImage(filename)
-        os.remove(filename)
+        try:
+            os.remove(filename)
+        except Exception as x:
+            logging.error(x)
+            logging.error( "unable to remove file:" + filename)
     except Exception as e:
         logging.error(e)
         return str(e)
@@ -59,7 +63,11 @@ def upload_file():
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 filePath = UPLOAD_FOLDER + '/' + filename
                 t = processImage(filePath)
-                os.remove(filePath)
+                try:
+                    os.remove(filePath)
+                except Exception as x:
+                    logging.error(x)
+                    logging.error( "unable to remove file:" + filename)
                 return t
 
             except Exception as e:
@@ -80,20 +88,50 @@ def processImage(filepath):
     textArray = text.split("\n")
     badge_count = 0
     i = 0
+    prev_line = ''
     for line in textArray:
         line = line.lstrip(' ').rstrip(' ')
         print line
         if line != '':
             l_length = line.__sizeof__()
-            if line.startswith('Home Trails Modules Projects') & line.endswith('Points') or line.startswith('Home') :
+            #if prev_line.startswith('Home') & prev_line.split(' ').__sizeof__() < 5:
+            #    print ">>>" + line
+            #    return 'Error:' + prev_line + ' ' + line
+            if line.startswith('Home Trails Modules Projects') & line.endswith('Points') or line.startswith('Home Trails') :
                 lineA = line.split(' ')
-                temp = lineA[7]
-                if (temp == '-') & (lineA[9] == 'Badges'):
-                    temp = lineA[8]
-                if temp.startswith("s"):
-                    temp = "5" + temp[1:]
-                logging.debug("badge_count: " + temp)
-                return temp
+                if lineA.__sizeof__() > 5:
+                    temp = lineA[7]
+                    e5 = lineA[5]
+                    e6 = lineA[6]
+                    if (temp == '-') & (lineA[9] == 'Badges'):
+                        temp = lineA[8]
+                    elif temp.__eq__('-') & e5.__eq__('-') :
+                        if e6.__eq__('zaadges') | e6.startswith('z'):
+                            temp = str(2)
+                    if temp.startswith("s"):
+                        temp = "5" + temp[1:]
+                    logging.debug("badge_count: " + temp)
+                    if temp.__eq__('-'):
+                        e5 = lineA[5]
+                        e6 = lineA[6]
+
+                    return temp
+
+            elif line.startswith('Home Tvails') :
+                lineA = line.split(' ')
+                if lineA.__len__() > 5:
+                    e6 = lineA[6]
+                    e7 = lineA[7]
+                    badge_count = ''
+                    if e7.__eq__('was'):
+                        if e6.isdigit():
+                            badge_count = e6
+                        elif e6.__eq__('a'):
+                            badge_count = str(0)
+                    elif e6.__eq__('a'):
+                        badge_count = str(0)
+
+                    return badge_count
             elif line[0:1].isdigit():
                 lineA = line.split(' ')
                 lineA_len = lineA.__len__()
@@ -118,7 +156,7 @@ def processImage(filepath):
                     logging.debug("badge_count: " + badge_count)
                     return badge_count
 
-
+        prev_line = line
         i += 1
     logging.debug("came here returning error")
     return "Error: " + text
